@@ -1,8 +1,8 @@
 # Подключение клиентов к шлюзу
 
-Как направить Claude Code, Claude Desktop (включая Cowork), Buff Code (консоль и приложение)
-и любой другой клиент через этот LiteLLM, чтобы персональные данные и секреты маскировались
-до ухода в модель и восстанавливались в ответе.
+Как направить Claude Code, Claude Desktop (включая Cowork), Codex, Buff Code (консоль и
+приложение) и любой другой клиент через этот LiteLLM, чтобы персональные данные и секреты
+маскировались до ухода в модель и восстанавливались в ответе.
 
 ## Что нужно знать заранее
 
@@ -12,6 +12,7 @@
 | API | Путь | Кто им пользуется |
 |---|---|---|
 | OpenAI Chat Completions | `/v1/chat/completions`, `/v1/models` | Buff Code, OpenAI SDK, большинство IDE-плагинов |
+| OpenAI Responses | `/v1/responses` | Codex (консоль и расширение IDE) |
 | Anthropic Messages | `/v1/messages`, `/v1/messages/count_tokens`, `/v1/models` | Claude Code, Claude Desktop и Cowork |
 
 Guardrail включён для **всех** ключей (`default_on: true` в `litellm/config.yaml`): какой бы
@@ -269,6 +270,74 @@ IdP (`inferenceCredentialKind: "interactive"`), тогда LiteLLM провер�
   провайдер другой, кеш промптов не работает, и каждый ход стоит полную цену входа.
 - Экспериментальные бета-функции (tool search) на шлюзе выключены по умолчанию.
 
+## Codex
+
+Codex (консоль `codex` и расширение для IDE) ходит в модель только по OpenAI Responses API;
+шлюз обслуживает `/v1/responses`, маскирование и восстановление работают и в потоковом ответе,
+который Codex показывает по мере прихода. Провайдер задаётся в файле настроек **пользователя**:
+проектный `.codex/config.toml` менять провайдера не может.
+
+**Модель за шлюзом должна уметь вызывать инструменты** (function calling): Codex присылает свои
+инструменты в каждом запросе. Модель без них (например `gemma3`) отвечает ошибкой
+`does not support tools`; подходят `qwen3`, `llama3.1`, `mistral` и любые модели OpenAI-совместимых
+серверов с поддержкой tools.
+
+### Шаг 1. Файл конфигурации
+
+| ОС | Файл |
+|---|---|
+| macOS, Linux | `~/.codex/config.toml` |
+| Windows | `%USERPROFILE%\.codex\config.toml` |
+
+```toml
+model = "default"
+model_provider = "litellm"
+
+[model_providers.litellm]
+name = "LiteLLM (guardrails)"
+base_url = "http://localhost:4000/v1"
+env_key = "LITELLM_API_KEY"
+wire_api = "responses"
+```
+
+`base_url` — с `/v1`: Codex добавляет к нему `/responses`. Имя провайдера любое, кроме
+зарезервированных `openai`, `ollama` и `lmstudio`. Ключ Codex читает только из переменной
+окружения, названной в `env_key`, — в файле его не держат.
+
+### Шаг 2. Ключ в окружение
+
+macOS / Linux: `export LITELLM_API_KEY=sk-...` в `~/.zshrc` или `~/.bashrc`, затем новый терминал.
+Windows (PowerShell, навсегда): `setx LITELLM_API_KEY "sk-..."`, затем новое окно терминала.
+Расширение для IDE берёт переменную из окружения, в котором запущен редактор.
+
+### Шаг 3. Проверить
+
+```sh
+codex exec "Меня зовут Иван Петров, тел. +7 912 345-67-89. Повтори, как меня зовут."
+```
+
+В ответе — исходные имя и телефон; в админке LiteLLM (**Logs**) в том же запросе вместо них
+`<PERSON_1>` и `<PHONE_NUMBER_2>`. Предупреждение `Model metadata for 'default' not found` в
+начале сессии — норма: Codex не знает нашу модель и берёт настройки по умолчанию.
+
+### Что меняется за шлюзом
+
+- Вход через ChatGPT не нужен и не используется: учёт идёт по ключу шлюза.
+- Параметры рассуждения и многословности (`reasoning`, `verbosity`) предназначены моделям
+  OpenAI; шлюз отбрасывает параметры, которых модель не знает (`drop_params`).
+- Поток приходит одним куском в конце — так работает восстановление значений.
+- Облачные задачи Codex, веб-поиск и плагины ChatGPT через шлюз не ходят.
+
+### Если не работает
+
+| Симптом | Причина | Что сделать |
+|---|---|---|
+| `401` | Переменная из `env_key` не видна Codex | `echo $LITELLM_API_KEY` в том же терминале; после `setx` — новое окно |
+| `does not support tools` | Модель за шлюзом без function calling | Поменяйте `LLM_MODEL` на модель с поддержкой инструментов |
+| `Invalid model name passed in` | `model` в `config.toml` не `default` | `model = "default"` или алиас в `config.yaml` |
+| `404` на старте диалога | `base_url` без `/v1` | `base_url = "http://localhost:4000/v1"` |
+| Ответ появляется целиком, не по словам | Так работает демаскирование в потоке | Это ожидаемо |
+
 ## Buff Code: консоль и приложение
 
 Buff Code работает со своим провайдером без входа в Buff. LiteLLM подключается как
@@ -326,8 +395,8 @@ macOS/Linux вместо `{env:…}` используйте `{file:…}`, на W
 ## Другие клиенты
 
 Любой OpenAI-совместимый клиент: `base_url = http://localhost:4000/v1`, `api_key = sk-…`,
-`model = default`. Любой клиент Anthropic SDK: `base_url = http://localhost:4000`,
-`auth_token = sk-…`. Guardrail один на все пути.
+`model = default` — и Chat Completions, и Responses API. Любой клиент Anthropic SDK:
+`base_url = http://localhost:4000`, `auth_token = sk-…`. Guardrail один на все пути.
 
 ## Как убедиться, что маскирование работает
 

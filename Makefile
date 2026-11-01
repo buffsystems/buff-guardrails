@@ -9,9 +9,9 @@ down:
 logs:
 	docker compose logs -f --tail=100
 
-# --- analyzer unit tests (checksums, recognizers) in the bench venv
+# --- unit tests in the bench venv: analyzer (checksums, recognizers) + the LiteLLM unmask hook
 test:
-	cd bench && . .venv/bin/activate && cd ../analyzer && python -m pytest -q
+	cd bench && . .venv/bin/activate && cd ../analyzer && python -m pytest -q && cd ../litellm && python -m pytest -q
 
 # --- benchmarks: all datasets, fast detectors by default; DETECTORS=... to pick
 DETECTORS ?= rules,spacy-lg

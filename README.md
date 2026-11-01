@@ -127,14 +127,32 @@ cd buff-guardrails
 Запустить `./install.sh` ещё раз можно в любой момент: он задаст те же вопросы и сохранит уже
 выданные ключи. Для установки без вопросов, например скриптом: `./install.sh --yes`.
 
-## Подключить Claude Code и другие клиенты
+## Подключить Claude Code, Codex и другие клиенты
 
-Шлюз понимает API Anthropic, поэтому Claude Code достаточно трёх переменных окружения:
+Шлюз понимает API Anthropic, поэтому Claude Code достаточно переменных окружения — адрес, ключ
+и имя модели (три последние строки направляют в `default` и фоновые задачи, которые Claude Code
+сам отдаёт разным моделям):
 
 ```sh
 export ANTHROPIC_BASE_URL=http://localhost:4000
 export ANTHROPIC_AUTH_TOKEN=sk-...        # виртуальный ключ из админки или LITELLM_MASTER_KEY
 export ANTHROPIC_MODEL=default
+export ANTHROPIC_DEFAULT_SONNET_MODEL=default
+export ANTHROPIC_DEFAULT_OPUS_MODEL=default
+export ANTHROPIC_DEFAULT_HAIKU_MODEL=default
+```
+
+Codex ходит по OpenAI Responses API — ему нужен провайдер в `~/.codex/config.toml`:
+
+```toml
+model = "default"
+model_provider = "litellm"
+
+[model_providers.litellm]
+name = "LiteLLM (guardrails)"
+base_url = "http://localhost:4000/v1"
+env_key = "LITELLM_API_KEY"               # переменная окружения с ключом sk-...
+wire_api = "responses"
 ```
 
 Claude Desktop и Cowork настраиваются через «Configure Third-Party Inference» в режиме

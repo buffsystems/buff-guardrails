@@ -3,9 +3,11 @@
 
   python scripts/e2e_check.py                 # uses .env (LITELLM_PORT, LITELLM_MASTER_KEY)
   python scripts/e2e_check.py --no-model      # analyzer + anonymizer only (no provider key needed)
+  python scripts/e2e_check.py --model default # your provider: adds the streamed Responses API path
 
-Exit code 0 when every expected value was masked on the way in and restored on
-the way out (tool-call arguments included when the model uses the tool).
+Both API shapes clients use are exercised: Chat Completions (Buff Code, SDKs) and the Responses
+API (Codex). Exit code 0 when every expected value was masked on the way in and restored on the
+way out (tool-call arguments included when the model uses the tool).
 """
 
 from __future__ import annotations
@@ -22,6 +24,7 @@ SAMPLE_RU = ("Клиент Иванов Пётр Сергеевич, тел. +7 
              "СНИЛС 112-233-445 95, карта 2200 0000 0000 0053. Напиши ему короткий ответ, обращаясь по имени.")
 EXPECTED = ["Иванов Пётр Сергеевич", "+7 (912) 345-67-89", "petr.ivanov@example.com", "112-233-445 95",
             "2200 0000 0000 0053"]
+PLACEHOLDER = re.compile(r"\b[A-Z][A-Z_]*_\d+\b")
 
 
 def env() -> dict[str, str]:
@@ -35,11 +38,25 @@ def env() -> dict[str, str]:
     return values
 
 
+def request(url: str, body: dict, headers: dict[str, str] | None = None) -> urllib.request.Request:
+    return urllib.request.Request(url, data=json.dumps(body).encode(), method="POST",
+                                  headers={"Content-Type": "application/json", **(headers or {})})
+
+
 def post(url: str, body: dict, headers: dict[str, str] | None = None) -> dict | list:
-    req = urllib.request.Request(url, data=json.dumps(body).encode(), method="POST",
-                                 headers={"Content-Type": "application/json", **(headers or {})})
-    with urllib.request.urlopen(req, timeout=180) as resp:
+    with urllib.request.urlopen(request(url, body, headers), timeout=600) as resp:  # a CPU model thinks slowly
         return json.load(resp)
+
+
+def stream(url: str, body: dict, headers: dict[str, str]) -> list[dict]:
+    """Server-sent events of a streamed call, parsed."""
+    events: list[dict] = []
+    with urllib.request.urlopen(request(url, {**body, "stream": True}, headers), timeout=600) as resp:
+        for raw in resp:
+            line = raw.decode("utf-8").strip()
+            if line.startswith("data: ") and line != "data: [DONE]":
+                events.append(json.loads(line[6:]))
+    return events
 
 
 def check_analyzer(base: str) -> bool:
@@ -56,8 +73,19 @@ def litellm_tokens(analyzer_results: list[dict]) -> list[str]:
     return [f"<{r['entity_type']}_{i}>" for i, r in enumerate(ordered, start=1)]
 
 
+def verdict(path: str, text: str, model: str) -> bool:
+    leaked = bool(PLACEHOLDER.search(text))
+    print(f"{path}: {text[:200].replace(chr(10), ' ')}")
+    print(f"{path}: placeholder left in answer: {leaked}")
+    if model == "mock":
+        restored = [v for v in EXPECTED if v in text]
+        print(f"{path}: restored {len(restored)}/{len(EXPECTED)} values")
+        return not leaked and len(restored) == len(EXPECTED)
+    return not leaked
+
+
 def check_litellm(base: str, key: str, model: str, analyzer: str) -> bool:
-    body: dict = {"model": model, "messages": [{"role": "user", "content": SAMPLE_RU}], "temperature": 0}
+    auth = {"Authorization": f"Bearer {key}"}
     if model == "mock":
         # The mock (litellm/config.yaml) quotes the placeholders LiteLLM creates for SAMPLE_RU;
         # make sure the analyzer still yields exactly those, then every original must come back.
@@ -66,16 +94,19 @@ def check_litellm(base: str, key: str, model: str, analyzer: str) -> bool:
         if tokens != expected:
             print(f"analyzer tokens changed: {tokens} — update mock_response in litellm/config.yaml")
             return False
-    out = post(f"{base}/v1/chat/completions", body, {"Authorization": f"Bearer {key}"})
-    text = out["choices"][0]["message"]["content"] or ""
-    leaked_placeholder = bool(re.search(r"\b[A-Z][A-Z_]*_\d+\b", text))
-    print("model answer:", text[:300].replace("\n", " "))
-    print("placeholder left in answer:", leaked_placeholder)
-    if model == "mock":
-        restored = [v for v in EXPECTED if v in text]
-        print(f"restored {len(restored)}/{len(EXPECTED)} values")
-        return not leaked_placeholder and len(restored) == len(EXPECTED)
-    return not leaked_placeholder
+    chat = post(f"{base}/v1/chat/completions",
+                {"model": model, "messages": [{"role": "user", "content": SAMPLE_RU}], "temperature": 0}, auth)
+    ok = verdict("chat", chat["choices"][0]["message"]["content"] or "", model)
+
+    responses = post(f"{base}/v1/responses", {"model": model, "input": SAMPLE_RU, "temperature": 0}, auth)
+    text = "".join(part.get("text") or "" for item in responses["output"] for part in item.get("content") or [])
+    ok &= verdict("responses", text, model)
+
+    if model != "mock":  # LiteLLM cannot stream a mocked Responses call; a real model shows the Codex path
+        events = stream(f"{base}/v1/responses", {"model": model, "input": SAMPLE_RU, "temperature": 0}, auth)
+        deltas = "".join(e.get("delta") or "" for e in events if e.get("type") == "response.output_text.delta")
+        ok &= verdict("responses stream (what Codex renders)", deltas, model)
+    return ok
 
 
 def main() -> int:
