@@ -1,0 +1,19 @@
+@import 'tailwindcss';
+@import '@buff/ui/tailwind.css';
+
+/* Placeholder highlight inside masked text — tokens only, no raw colours. */
+.gr-mark {
+  border-radius: var(--ui-radius-sm, 4px);
+  padding: 0 0.25em;
+  background: var(--color-primary-soft, color-mix(in oklab, var(--color-primary) 18%, transparent));
+  color: var(--color-primary);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+
+.gr-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.55;
+}

@@ -1,0 +1,85 @@
+{
+  "$comment": "Demo preset sets for the masking demo. All data is synthetic (Faker-style, checksum-valid IDs). `expect` lists entity families that must be masked; Playwright tests assert them. `task` is the prompt appended on the «через модель» tab.",
+  "presets": [
+    {
+      "id": "support",
+      "title": { "ru": "Чат поддержки", "en": "Support chat" },
+      "text": {
+        "ru": "Здравствуйте! Меня зовут Коновалова Марина Ильинична, заказ №4471920 так и не приехал. Мой телефон +7 (921) 334-18-07, почта marina.konovalova@example.com, адрес доставки: г. Казань, ул. Чистопольская, д. 61, кв. 14. Курьер звонил вчера и пропал.",
+        "en": "Hi! This is Marina Konovalova, order #4471920 never arrived. My phone is +1 (415) 867-5309, email marina.konovalova@example.com, delivery address 61 Chistopolskaya St, apt 14, Kazan. The courier called yesterday and vanished."
+      },
+      "expect": ["PERSON", "PHONE_NUMBER", "EMAIL_ADDRESS", "LOCATION"],
+      "task": { "ru": "Напиши короткий вежливый ответ клиенту, обращаясь по имени, и попроси подтвердить адрес.", "en": "Write a short polite reply to the customer by name and ask them to confirm the address." }
+    },
+    {
+      "id": "hr",
+      "title": { "ru": "HR и резюме", "en": "HR / resume" },
+      "text": {
+        "ru": "Кандидат: Егоров Станислав Петрович, дата рождения 14.03.1991. Паспорт 46 12 № 583902, выдан ОУФМС по Московской области. СНИЛС 112-233-445 95, ИНН 500100732259. Контакты: +7 916 203-44-19, s.egorov@example.org. Проживает: Московская обл., г. Химки, пр-т Мельникова, д. 2Б, кв. 77.",
+        "en": "Candidate: Stanislav Egorov, born 14/03/1991. Passport 46 12 583902. SNILS 112-233-445 95, TIN 500100732259. Contacts: +7 916 203-44-19, s.egorov@example.org. Address: 2B Melnikova Ave, apt 77, Khimki, Moscow region."
+      },
+      "expect": ["PERSON", "DATE_OF_BIRTH", "RU_PASSPORT", "RU_SNILS", "RU_INN", "PHONE_NUMBER", "EMAIL_ADDRESS"],
+      "task": { "ru": "Составь краткое саммари кандидата для нанимающего менеджера в трёх пунктах.", "en": "Write a three-bullet candidate summary for the hiring manager." }
+    },
+    {
+      "id": "banking",
+      "title": { "ru": "Банк и платежи", "en": "Banking / payments" },
+      "text": {
+        "ru": "Прошу вернуть платёж на карту 2200 0000 0000 0053 (CVC 417), либо на счёт 40817810099910004312 в банке с БИК 044525225, корр. счёт 30101810400000000225. Плательщик Ткаченко Олег Валерьевич, IBAN для валюты GB29 NWBK 6016 1331 9268 19.",
+        "en": "Please refund to card 4111 1111 1111 1111 (CVV 417) or to account 40817810099910004312, BIC 044525225, corr. account 30101810400000000225. Payer Oleg Tkachenko, IBAN for FX GB29 NWBK 6016 1331 9268 19."
+      },
+      "expect": ["CREDIT_CARD", "CVC", "BANK_ACCOUNT", "RU_BIK", "PERSON", "IBAN_CODE"],
+      "task": { "ru": "Объясни клиенту порядок возврата и сроки, не раскрывая реквизиты полностью.", "en": "Explain the refund procedure and timelines to the customer without echoing full account details." }
+    },
+    {
+      "id": "code",
+      "title": { "ru": "Код и конфиг", "en": "Code & config" },
+      "text": {
+        "ru": "# .env сервиса, не коммитить\nDATABASE_URL=postgres://app:Qw3rty!Pass_2026@db.internal:5432/app\nOPENAI_API_KEY=sk-proj-Ab12Cd34Ef56Gh78Ij90Kl12Mn34Op56Qr78St90\nGITHUB_TOKEN=ghp_7Hs9kLm2Np4Qr6Tu8Vw0Xy1Za3Bc5De7Fg9Hj\nJWT=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0MiIsIm5hbWUiOiJhZG1pbiJ9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c\n# тестовые данные: ADMIN_EMAIL=test@example.com, LISTEN=127.0.0.1:8080, VERSION=2.14.3",
+        "en": "# service .env, do not commit\nDATABASE_URL=postgres://app:Qw3rty!Pass_2026@db.internal:5432/app\nOPENAI_API_KEY=sk-proj-Ab12Cd34Ef56Gh78Ij90Kl12Mn34Op56Qr78St90\nGITHUB_TOKEN=ghp_7Hs9kLm2Np4Qr6Tu8Vw0Xy1Za3Bc5De7Fg9Hj\nJWT=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0MiIsIm5hbWUiOiJhZG1pbiJ9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c\n# test data: ADMIN_EMAIL=test@example.com, LISTEN=127.0.0.1:8080, VERSION=2.14.3"
+      },
+      "expect": ["SECRET", "EMAIL_ADDRESS", "IP_ADDRESS"],
+      "task": { "ru": "Найди проблемы безопасности в этом конфиге и предложи, как хранить секреты правильно.", "en": "Find the security problems in this config and suggest how to store secrets properly." }
+    },
+    {
+      "id": "logs",
+      "title": { "ru": "Логи инцидента", "en": "Incident logs" },
+      "text": {
+        "ru": "2026-10-30T22:14:03Z WARN auth: login failed for d.sokolov@example.com from 93.184.216.34 (user_id=48213)\n2026-10-30T22:14:09Z WARN auth: login failed for d.sokolov@example.com from 93.184.216.34\n2026-10-30T22:15:41Z INFO api: GET /v1/export?token=tok_Xy9kQ2mN7pL4vR8tW1sZq3Wn by 172.16.4.17\n2026-10-30T22:16:02Z ERROR billing: card 5500 0000 0000 0004 declined for Соколов Д.А., phone +7 903 111-22-33",
+        "en": "2026-10-30T22:14:03Z WARN auth: login failed for d.sokolov@example.com from 93.184.216.34 (user_id=48213)\n2026-10-30T22:14:09Z WARN auth: login failed for d.sokolov@example.com from 93.184.216.34\n2026-10-30T22:15:41Z INFO api: GET /v1/export?token=tok_Xy9kQ2mN7pL4vR8tW1sZq3Wn by 172.16.4.17\n2026-10-30T22:16:02Z ERROR billing: card 5500 0000 0000 0004 declined for D. Sokolov, phone +7 903 111-22-33"
+      },
+      "expect": ["EMAIL_ADDRESS", "IP_ADDRESS", "SECRET", "CREDIT_CARD", "PHONE_NUMBER"],
+      "task": { "ru": "Что произошло в этих логах? Дай гипотезу и три шага расследования.", "en": "What happened in these logs? Give a hypothesis and three investigation steps." }
+    },
+    {
+      "id": "contract",
+      "title": { "ru": "Договор", "en": "Contract" },
+      "text": {
+        "ru": "ДОГОВОР № ДОГ-0417/26 от 12.10.2026. ООО «Вектор Плюс», ИНН 7707083893, ОГРН 1027700132195, КПП 770701001, в лице генерального директора Беляева Антона Игоревича, и гражданин Громов Илья Сергеевич, паспорт 40 11 № 220931, проживающий по адресу: г. Санкт-Петербург, Невский пр-т, д. 100, кв. 5, заключили настоящий договор.",
+        "en": "CONTRACT No. CTR-041726 dated 12/10/2026. Vector Plus LLC, TIN 7707083893, OGRN 1027700132195, KPP 770701001, represented by CEO Anton Belyaev, and Mr Ilya Gromov, passport 40 11 220931, residing at 100 Nevsky Ave, apt 5, Saint Petersburg, have concluded this contract."
+      },
+      "expect": ["RU_INN", "RU_OGRN", "RU_KPP", "PERSON", "RU_PASSPORT", "LOCATION"],
+      "task": { "ru": "Перечисли стороны договора и их реквизиты в виде таблицы.", "en": "List the parties and their details as a table." }
+    },
+    {
+      "id": "corporate",
+      "title": { "ru": "Корпоративные данные", "en": "Corporate data" },
+      "text": {
+        "ru": "Статус по Project Falcon: заказчик ООО Ромашка подтвердил договор ДОГ-0417/26, стенд поднят на falcon-stage.corp.example, доступ через vpn.internal. Второй пилот — Сокол-2 для Northwind Traders, контракт CTR-000912 на согласовании.",
+        "en": "Project Falcon status: customer Northwind Traders confirmed contract CTR-000912, staging is up at falcon-stage.corp.example, access via vpn.internal. Second pilot — Sokol-2 for ООО Ромашка, contract ДОГ-0417/26 under review."
+      },
+      "expect": ["CORP_PROJECT", "CORP_CUSTOMER", "CORP_CONTRACT", "CORP_DOMAIN"],
+      "task": { "ru": "Сделай из этого статус для руководства в двух предложениях.", "en": "Turn this into a two-sentence status for management." }
+    },
+    {
+      "id": "mixed",
+      "title": { "ru": "Смешанный RU+EN", "en": "Mixed RU+EN" },
+      "text": {
+        "ru": "Forwarding the thread: Пётр Калинин (p.kalinin@example.com, +7 999 010-20-30) asked to update the billing address to 221B Baker Street, London. Also his colleague John Carter, phone +44 20 7946 0958, will join the call from IP 198.51.100.7. Карта для оплаты: 4111 1111 1111 1111.",
+        "en": "Forwarding the thread: Пётр Калинин (p.kalinin@example.com, +7 999 010-20-30) asked to update the billing address to 221B Baker Street, London. Also his colleague John Carter, phone +44 20 7946 0958, will join the call from IP 198.51.100.7. Карта для оплаты: 4111 1111 1111 1111."
+      },
+      "expect": ["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER", "LOCATION", "IP_ADDRESS", "CREDIT_CARD"],
+      "task": { "ru": "Кратко перескажи, что нужно сделать, по-русски.", "en": "Summarise the action items in English." }
+    }
+  ]
+}

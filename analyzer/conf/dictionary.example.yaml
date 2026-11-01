@@ -1,0 +1,23 @@
+# Корпоративный словарь / corporate dictionary.
+# Всё, что перечислено здесь, маскируется как сущность с указанным именем и
+# восстанавливается в ответе модели. Скопируйте в dictionary.yaml и впишите своё.
+# Everything listed is masked under the given entity name and restored in the
+# model's answer. Copy to dictionary.yaml and fill in your own.
+entities:
+  CORP_CUSTOMER:
+    terms:
+      - "ООО Ромашка"
+      - "Ромашка"
+      - "Northwind Traders"
+  CORP_PROJECT:
+    terms:
+      - "Project Falcon"
+      - "Сокол-2"
+  CORP_CONTRACT:
+    regex:
+      - "\\bДОГ-\\d{4}/\\d{2}\\b"
+      - "\\bCTR-\\d{6}\\b"
+  CORP_DOMAIN:
+    regex:
+      - "\\b[a-z0-9.-]+\\.corp\\.example\\b"
+      - "\\b[a-z0-9.-]+\\.internal\\b"

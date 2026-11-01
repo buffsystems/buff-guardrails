@@ -1,0 +1,20 @@
+# NVIDIA GPU for the local model backends: docker compose -f docker-compose.yml -f docker-compose.gpu.yml up
+# (install.sh adds this file to COMPOSE_FILE in .env when a GPU is detected). Needs the NVIDIA
+# Container Toolkit on the host.
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+  vllm:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

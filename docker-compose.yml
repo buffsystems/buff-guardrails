@@ -1,0 +1,126 @@
+services:
+  litellm:
+    image: ghcr.io/berriai/litellm-database:v1.106.6
+    depends_on:
+      postgres:
+        condition: service_healthy
+      analyzer:
+        condition: service_healthy
+      anonymizer:
+        condition: service_started
+    ports:
+      - "${LITELLM_PORT:-4000}:4000"
+    volumes:
+      - ./litellm/config.yaml:/app/config.yaml:ro
+      - ./litellm/fuzzy_unmask.py:/app/fuzzy_unmask.py:ro
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      LITELLM_SALT_KEY: ${LITELLM_SALT_KEY}
+      LITELLM_LOG: ${LITELLM_LOG:-INFO}
+      DATABASE_URL: postgresql://litellm:${POSTGRES_PASSWORD}@postgres:5432/litellm
+      # no model configured → a dead placeholder so LiteLLM still starts; the demo reads the raw LLM_MODEL
+      LLM_MODEL: ${LLM_MODEL:-openai/none}
+      LLM_API_KEY: ${LLM_API_KEY:-none}
+      LLM_API_BASE: ${LLM_API_BASE:-http://localhost:1/v1}
+      PRESIDIO_ANALYZER_API_BASE: http://analyzer:3000
+      PRESIDIO_ANONYMIZER_API_BASE: http://anonymizer:3000
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+
+  analyzer:
+    build:
+      context: ./analyzer
+    ports:
+      - "${ANALYZER_PORT:-3000}:3000"
+    volumes:
+      - models:/models
+      - ./analyzer/conf:/app/conf:ro
+    environment:
+      GUARDRAILS_LANGUAGES: ${GUARDRAILS_LANGUAGES:-ru,en}
+      GUARDRAILS_NER: ${GUARDRAILS_NER:-spacy}
+      GUARDRAILS_SCORE_THRESHOLD: ${GUARDRAILS_SCORE_THRESHOLD:-0.35}
+      GUARDRAILS_DICTIONARY: ${GUARDRAILS_DICTIONARY:-/app/conf/dictionary.yaml}
+      GUARDRAILS_GLINER_MODEL: ${GUARDRAILS_GLINER_MODEL:-}
+      GUARDRAILS_HF_NER_MODEL: ${GUARDRAILS_HF_NER_MODEL:-}
+      GUARDRAILS_HF_NER_MAPPING: ${GUARDRAILS_HF_NER_MAPPING:-}
+
+  anonymizer:
+    image: mcr.microsoft.com/presidio-anonymizer:latest
+    environment:
+      PORT: "3000"
+
+  demo:
+    build:
+      context: ./demo
+    depends_on:
+      analyzer:
+        condition: service_healthy
+    ports:
+      - "${DEMO_PORT:-8080}:8080"
+    environment:
+      ANALYZER_URL: http://analyzer:3000
+      LITELLM_URL: http://litellm:4000
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: litellm
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U litellm"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # --- optional local model backends (COMPOSE_PROFILES in .env, set by install.sh) ---
+  # Ollama: CPU or GPU, pulls OLLAMA_MODEL on first start. LiteLLM reaches it as
+  # LLM_MODEL=ollama_chat/<model>, LLM_API_BASE=http://ollama:11434.
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ollama"]
+    volumes:
+      - ollama:/root/.ollama
+    environment:
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-24h}
+      OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-2}
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  ollama-pull:
+    image: ollama/ollama:latest
+    profiles: ["ollama"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    volumes:
+      - ollama:/root/.ollama
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["sh", "-c", "ollama pull ${OLLAMA_MODEL:-gemma3:4b}"]
+    restart: "no"
+
+  # vLLM: NVIDIA GPU only (docker-compose.gpu.yml adds the device). LiteLLM reaches it as
+  # LLM_MODEL=hosted_vllm/<model>, LLM_API_BASE=http://vllm:8000/v1.
+  vllm:
+    image: vllm/vllm-openai:latest
+    profiles: ["vllm"]
+    volumes:
+      - hf:/root/.cache/huggingface
+    environment:
+      HF_HUB_OFFLINE: ${VLLM_OFFLINE:-0}
+    command: ["--model", "${VLLM_MODEL:-Qwen/Qwen3-8B}", "--max-model-len", "${VLLM_MAX_LEN:-32768}", "--served-model-name", "${VLLM_MODEL:-Qwen/Qwen3-8B}"]
+    ipc: host
+
+volumes:
+  models:
+  pgdata:
+  ollama:
+  hf:

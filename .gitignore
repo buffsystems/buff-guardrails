@@ -1,0 +1,21 @@
+# deps / build
+node_modules/
+dist/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+# secrets
+.env
+*.pem
+*.key
+# bench caches and raw results (tables are committed, raw runs are not)
+bench/.cache/
+bench/results/raw/
+*.egg-info/
+demo/frontend/node_modules/
+demo/frontend/dist/
+demo/frontend/test-results/
+.cache-build.log
+.env.bak.*
+.env.pre-install

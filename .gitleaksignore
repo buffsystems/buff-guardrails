@@ -1,0 +1,20 @@
+# Заведомо фальшивые ключи в тестах распознавателей и демо-наборах: шлюз их маскирует, поэтому они
+# здесь и лежат. Отпечатки gitleaks (путь:правило:строка) для публикации снимка; при правке этих
+# файлов перегенерировать: gitleaks dir . --report-format json.
+
+/scan/analyzer/tests/test_recognizers.py:aws-access-token:73
+analyzer/tests/test_recognizers.py:aws-access-token:73
+/scan/analyzer/tests/test_recognizers.py:generic-api-key:70
+analyzer/tests/test_recognizers.py:generic-api-key:70
+/scan/analyzer/tests/test_recognizers.py:generic-api-key:74
+analyzer/tests/test_recognizers.py:generic-api-key:74
+/scan/analyzer/tests/test_recognizers.py:github-pat:71
+analyzer/tests/test_recognizers.py:github-pat:71
+/scan/demo/presets.json:github-pat:38
+demo/presets.json:github-pat:38
+/scan/demo/presets.json:github-pat:39
+demo/presets.json:github-pat:39
+/scan/demo/presets.json:generic-api-key:48
+demo/presets.json:generic-api-key:48
+/scan/demo/presets.json:generic-api-key:49
+demo/presets.json:generic-api-key:49
