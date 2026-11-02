@@ -16,8 +16,11 @@ import sys
 import time
 from pathlib import Path
 
-from .detectors import DETECTORS
+from .detectors import DETECTORS as PII_DETECTORS
+from .detectors_secrets import SECRET_DETECTORS
 from .loaders import LOADERS
+
+DETECTORS = {**PII_DETECTORS, **SECRET_DETECTORS}
 from .metrics import Scores, score_example
 
 RESULTS = Path(__file__).resolve().parent.parent / "results"

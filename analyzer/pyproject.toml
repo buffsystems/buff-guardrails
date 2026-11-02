@@ -12,6 +12,8 @@ dependencies = [
 [project.optional-dependencies]
 hf = ["transformers>=4.40", "torch"]
 gliner = ["gliner>=0.2"]
+# the password judge of the secret cascade (bardsai/password-detector, int8 ONNX)
+secrets = ["onnxruntime>=1.17", "huggingface_hub>=0.20", "numpy"]
 test = ["pytest>=8"]
 
 [build-system]

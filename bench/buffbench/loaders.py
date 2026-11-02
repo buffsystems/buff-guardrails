@@ -9,6 +9,7 @@ import re
 from pathlib import Path
 from typing import Callable
 
+from .loaders_secrets import SECRET_LOADERS
 from .types import IGNORE, Dataset, Example, Span
 
 PII_BENCH_MAP = {
@@ -131,6 +132,7 @@ LOADERS: dict[str, Callable[[int | None], Dataset]] = {
     "redmadrobot": load_redmadrobot,
     "synthetic": load_synthetic,
     "secrets": load_secrets,
+    **SECRET_LOADERS,
 }
 
 WORD = re.compile(r"\w", re.UNICODE)

@@ -12,6 +12,7 @@ __pycache__/
 # bench caches and raw results (tables are committed, raw runs are not)
 bench/.cache/
 bench/results/raw/
+bench/results/raw-quiet/
 *.egg-info/
 demo/frontend/node_modules/
 demo/frontend/dist/

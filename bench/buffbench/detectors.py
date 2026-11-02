@@ -51,15 +51,22 @@ class Detector:
     name: str
     description: str
     settings: EngineSettings
-    extra: Callable[[str], object] | None = None  # language → extra recognizer
+    extra: Callable[[str], object] | None = None  # language → extra recognizer (or a list of them)
     entities: list[str] | None = None
+    without_secret_rules: bool = False  # drop the shipped secret regexes (a model alone)
     _analyzer: object = field(default=None, repr=False)
 
     def load(self) -> None:
         analyzer = build_analyzer(self.settings)
+        if self.without_secret_rules:
+            for recognizer in list(analyzer.registry.recognizers):
+                if recognizer.name.startswith("buff_secret_"):
+                    analyzer.registry.remove_recognizer(recognizer.name)
         if self.extra:
             for language in self.settings.languages:
-                analyzer.registry.add_recognizer(self.extra(language))
+                made = self.extra(language)
+                for recognizer in made if isinstance(made, list) else [made]:
+                    analyzer.registry.add_recognizer(recognizer)
         self._analyzer = analyzer
 
     def analyze(self, text: str, language: str) -> list[Span]:

@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf 
 WORKDIR /app
 COPY pyproject.toml ./
 COPY buff_guardrails ./buff_guardrails
-RUN pip install . flask gunicorn \
+RUN pip install .[secrets] flask gunicorn \
  && python -m spacy download ru_core_news_lg \
  && python -m spacy download en_core_web_lg \
  && python -m spacy download ru_core_news_sm \

@@ -11,10 +11,15 @@ One place decides which NER runs. Everything is CPU by default:
   GUARDRAILS_HF_NER_MAPPING optional "LABEL=ENTITY,LABEL2=ENTITY2" for that model
   GUARDRAILS_DICTIONARY     path to the corporate dictionary YAML
   GUARDRAILS_SCORE_THRESHOLD default 0.35
+  GUARDRAILS_SECRETS        "cascade" (default: regexes + bardsai judge), "cascade-strict"
+                            (the judge only filters), "rules" (regexes only), "none"
+                            (provider key formats only); falls back to "rules" when the
+                            model cannot be loaded
 """
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass, field
 
@@ -22,12 +27,16 @@ from presidio_analyzer import AnalyzerEngine, RecognizerRegistry
 from presidio_analyzer.nlp_engine import NlpEngineProvider
 from presidio_analyzer.predefined_recognizers import PhoneRecognizer
 
+from .cascade import CascadeSecretRecognizer, Judge
 from .dictionary import load_dictionary
 from .hf_ner import HfTokenClassificationRecognizer
+from .passwords import build_password_recognizer
 from .priority import cap_structured
 from .ru_ids import RU_ID_SPECS
 from .secrets import build_secret_recognizer
 
+log = logging.getLogger("buff-guardrails")
+SECRET_MODES = ("cascade", "cascade-strict", "rules", "none")
 SPACY_DEFAULTS = {"ru": "ru_core_news_lg", "en": "en_core_web_lg"}
 SPACY_SMALL = {"ru": "ru_core_news_sm", "en": "en_core_web_sm"}
 # libphonenumber regions tried for free-form numbers. RU is deliberately absent:
@@ -84,6 +93,11 @@ class EngineSettings:
     hf_ner_mapping: dict[str, str] = field(default_factory=dict)
     dictionary: str | None = None
     score_threshold: float = 0.35
+    secrets: str = "cascade"
+
+    def __post_init__(self) -> None:
+        if self.secrets not in SECRET_MODES:
+            raise ValueError(f"GUARDRAILS_SECRETS must be one of {', '.join(SECRET_MODES)}, got {self.secrets!r}")
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> "EngineSettings":
@@ -107,7 +121,33 @@ class EngineSettings:
             hf_ner_mapping=mapping,
             dictionary=e.get("GUARDRAILS_DICTIONARY") or None,
             score_threshold=float(e.get("GUARDRAILS_SCORE_THRESHOLD", "0.35")),
+            secrets=e.get("GUARDRAILS_SECRETS") or "cascade",
         )
+
+
+def load_judge(settings: EngineSettings) -> Judge | None:
+    """The cascade's model, or None (regexes only) when the mode needs none or the
+    model cannot be fetched — a machine without Hugging Face access still starts."""
+    if not settings.secrets.startswith("cascade"):
+        return None
+    from .bardsai import BardsaiJudge
+
+    judge = BardsaiJudge()
+    try:
+        judge.load()
+    except Exception as exc:  # noqa: BLE001 — any load failure means: run without the model
+        log.warning("secret cascade: bardsai model unavailable (%s); regexes only", exc)
+        return None
+    return judge
+
+
+def secret_recognizers(mode: str, language: str, judge: Judge | None) -> list:
+    if mode == "none":
+        return [build_secret_recognizer(language)]
+    rules = [build_secret_recognizer(language), build_password_recognizer(language)]
+    if mode == "rules" or judge is None:
+        return rules
+    return [CascadeSecretRecognizer(language, rules, judge, own_scan=(mode == "cascade"))]
 
 
 def build_nlp_engine(settings: EngineSettings):
@@ -138,7 +178,7 @@ def build_nlp_engine(settings: EngineSettings):
     return NlpEngineProvider(nlp_configuration=configuration).create_engine()
 
 
-def build_registry(settings: EngineSettings, nlp_engine) -> RecognizerRegistry:
+def build_registry(settings: EngineSettings, nlp_engine, judge: Judge | None = None) -> RecognizerRegistry:
     registry = RecognizerRegistry(supported_languages=settings.languages)
     registry.load_predefined_recognizers(languages=settings.languages, nlp_engine=nlp_engine)
     for recognizer in list(registry.recognizers):
@@ -149,7 +189,8 @@ def build_registry(settings: EngineSettings, nlp_engine) -> RecognizerRegistry:
     for language in settings.languages:
         for build in RU_ID_SPECS:
             registry.add_recognizer(build(language))
-        registry.add_recognizer(build_secret_recognizer(language))
+        for recognizer in secret_recognizers(settings.secrets, language, judge):
+            registry.add_recognizer(recognizer)
         registry.add_recognizer(
             WeakPhoneRecognizer(
                 supported_language=language,
@@ -195,7 +236,7 @@ def _gliner(model_name: str, language: str, structured_score_cap: float):
 def build_analyzer(settings: EngineSettings | None = None) -> AnalyzerEngine:
     settings = settings or EngineSettings.from_env()
     nlp_engine = build_nlp_engine(settings)
-    registry = build_registry(settings, nlp_engine)
+    registry = build_registry(settings, nlp_engine, load_judge(settings))
     return AnalyzerEngine(
         registry=registry,
         nlp_engine=nlp_engine,

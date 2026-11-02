@@ -11,7 +11,7 @@ logs:
 
 # --- unit tests in the bench venv: analyzer (checksums, recognizers) + the LiteLLM unmask hook
 test:
-	cd bench && . .venv/bin/activate && cd ../analyzer && python -m pytest -q && cd ../litellm && python -m pytest -q
+	cd bench && . .venv/bin/activate && export HF_HOME=$$PWD/.cache/hf && cd ../analyzer && python -m pytest -q && cd ../litellm && python -m pytest -q
 
 # --- benchmarks: all datasets, fast detectors by default; DETECTORS=... to pick
 DETECTORS ?= rules,spacy-lg
@@ -25,5 +25,5 @@ bench-report:
 bench-venv:
 	cd bench && python3 -m venv .venv && . .venv/bin/activate && pip install -q --upgrade pip \
 	  && pip install -q torch --index-url https://download.pytorch.org/whl/cpu \
-	  && pip install -q -e ../analyzer[hf,gliner,test] gliner2 datasets faker spacy pyyaml \
+	  && pip install -q -e ../analyzer[hf,gliner,secrets,test] gliner2 datasets faker spacy pyyaml credsweeper \
 	  && for m in ru_core_news_lg en_core_web_lg ru_core_news_sm en_core_web_sm; do python -m spacy download -q $$m; done

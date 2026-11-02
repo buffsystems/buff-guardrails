@@ -18,3 +18,24 @@ demo/presets.json:github-pat:39
 demo/presets.json:generic-api-key:48
 /scan/demo/presets.json:generic-api-key:49
 demo/presets.json:generic-api-key:49
+
+# #740: fake passwords in the cascade/password tests, the synthetic generator and the hand-labelled
+# agent-real set (RFC 6749 example tokens, a base64 song line, a dummy curl header).
+/scan/analyzer/tests/test_cascade.py:aws-access-token:38
+analyzer/tests/test_cascade.py:aws-access-token:38
+/scan/analyzer/tests/test_cascade.py:aws-access-token:39
+analyzer/tests/test_cascade.py:aws-access-token:39
+/scan/analyzer/tests/test_cascade.py:generic-api-key:44
+analyzer/tests/test_cascade.py:generic-api-key:44
+/scan/analyzer/tests/test_cascade.py:generic-api-key:110
+analyzer/tests/test_cascade.py:generic-api-key:110
+/scan/analyzer/tests/test_passwords.py:curl-auth-user:48
+analyzer/tests/test_passwords.py:curl-auth-user:48
+/scan/bench/buffbench/synthetic_secrets.py:curl-auth-user:68
+bench/buffbench/synthetic_secrets.py:curl-auth-user:68
+/scan/bench/data/agent-real.jsonl:generic-api-key:519
+bench/data/agent-real.jsonl:generic-api-key:519
+/scan/bench/data/agent-real.jsonl:generic-api-key:619
+bench/data/agent-real.jsonl:generic-api-key:619
+/scan/bench/data/agent-real.jsonl:curl-auth-header:1111
+bench/data/agent-real.jsonl:curl-auth-header:1111

@@ -10,7 +10,7 @@
 #
 #   ./install.sh                 интерактивно / interactive
 #   ./install.sh --lang en       язык подсказок / prompt language
-#   ./install.sh --yes           без вопросов: правила + spaCy, без модели / defaults, no model
+#   ./install.sh --yes           без вопросов: spaCy, пароли правилами + моделью, без LLM / defaults, no LLM
 #
 # Windows: run from Git Bash or WSL with Docker Desktop started.
 set -euo pipefail
@@ -102,7 +102,20 @@ case $REPLY in
   5) NER=none; GLINER="urchade/gliner_multi_pii-v1" ;;
 esac
 
-# ---- 3. ports ------------------------------------------------------------------------------
+# ---- 3. passwords and secrets ----------------------------------------------------------------
+ask "$(t "3. Как искать пароли и секреты? (Ключи AWS, GitHub, OpenAI и других сервисов по формату находятся при любом выборе)" "3. How to look for passwords and secrets? (AWS, GitHub, OpenAI and other service keys are found by format whichever you pick)")" 1 \
+  "$(t "Правила + маленькая модель (по умолчанию) — находит 92 паролей из 100 в коде, логах и переписке; +5 мс; модель 0,7 МБ скачивается при первом запуске" "Rules + a small model (default) — finds 92 passwords in 100 in code, logs and chats; +5 ms; a 0.7 MB model is downloaded on first start")" \
+  "$(t "Строго: модель только отсекает ложные срабатывания — находит 85 из 100, зато лишнего прячет втрое меньше; +3 мс" "Strict: the model only filters out false hits — finds 85 in 100, but hides a third as much by mistake; +3 ms")" \
+  "$(t "Только правила — находит 86 из 100, но прячет лишнее в полтора раза чаще; ничего не скачивается" "Rules only — finds 86 in 100, but hides unrelated text 1.5× more often; nothing is downloaded")" \
+  "$(t "Не искать пароли — только ключи известных форматов" "Do not look for passwords — known key formats only")"
+case $REPLY in
+  1) SECRETS=cascade ;;
+  2) SECRETS=cascade-strict ;;
+  3) SECRETS=rules ;;
+  4) SECRETS=none ;;
+esac
+
+# ---- 4. ports ------------------------------------------------------------------------------
 prompt "$(t "Порт шлюза (его адрес сотрудники укажут в своих программах)" "Gateway port (your people will point their tools at it)")" "${LITELLM_PORT:-4000}"; LITELLM_PORT=$REPLY
 prompt "$(t "Порт демо" "Demo port")" "${DEMO_PORT:-8080}"; DEMO_PORT=$REPLY; ANALYZER_PORT="${ANALYZER_PORT:-3000}"
 
@@ -121,6 +134,7 @@ sed -e "s|^LLM_MODEL=.*|LLM_MODEL=$LLM_MODEL|" -e "s|^LLM_API_BASE=.*|LLM_API_BA
     -e "s|^LITELLM_MASTER_KEY=.*|LITELLM_MASTER_KEY=$MASTER|" -e "s|^LITELLM_SALT_KEY=.*|LITELLM_SALT_KEY=$SALT|" -e "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$PGPASS|" \
     -e "s|^GUARDRAILS_NER=.*|GUARDRAILS_NER=$NER|" -e "s|^GUARDRAILS_HF_NER_MODEL=.*|GUARDRAILS_HF_NER_MODEL=$HF_MODEL|" \
     -e "s|^GUARDRAILS_HF_NER_MAPPING=.*|GUARDRAILS_HF_NER_MAPPING=$HF_MAP|" -e "s|^GUARDRAILS_GLINER_MODEL=.*|GUARDRAILS_GLINER_MODEL=$GLINER|" \
+    -e "s|^GUARDRAILS_SECRETS=.*|GUARDRAILS_SECRETS=$SECRETS|" \
     -e "s|^LITELLM_PORT=.*|LITELLM_PORT=$LITELLM_PORT|" -e "s|^DEMO_PORT=.*|DEMO_PORT=$DEMO_PORT|" -e "s|^ANALYZER_PORT=.*|ANALYZER_PORT=$ANALYZER_PORT|" \
     .env.example > .env
 say ".env записан" ".env written"

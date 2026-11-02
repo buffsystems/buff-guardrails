@@ -8,7 +8,7 @@ from buff_guardrails.engine import EngineSettings, build_analyzer
 
 @pytest.fixture(scope="module")
 def analyzer():
-    return build_analyzer(EngineSettings(ner="none", spacy_models={"ru": "ru_core_news_sm", "en": "en_core_web_sm"}))
+    return build_analyzer(EngineSettings(ner="none", secrets="rules", spacy_models={"ru": "ru_core_news_sm", "en": "en_core_web_sm"}))
 
 
 def found(analyzer, text, language="ru"):
@@ -102,7 +102,7 @@ def test_rules_decide_structured_types_over_a_ner_model():
     assert [r.score for r in capped] == [0.35, 0.99]
 
     text = "ИНН 7707083893, Иванов пишет 7707083893 и 1234567890 без контекста"
-    engine = build_analyzer(EngineSettings(ner="none", spacy_models={"ru": "ru_core_news_sm", "en": "en_core_web_sm"}))
+    engine = build_analyzer(EngineSettings(ner="none", secrets="rules", spacy_models={"ru": "ru_core_news_sm", "en": "en_core_web_sm"}))
     class StubModel(HfTokenClassificationRecognizer):  # Presidio calls load() from __init__
         def load(self):
             self._pipeline = lambda chunk: [  # over-extends one INN and finds the context-less one

@@ -33,8 +33,8 @@ def detect_language(text: str, supported: list[str]) -> str:
 def create_app() -> Flask:
     settings = EngineSettings.from_env()
     analyzer = build_analyzer(settings)
-    log.info("analyzer ready: languages=%s ner=%s gliner=%s hf=%s", settings.languages, settings.ner,
-             settings.gliner_model, settings.hf_ner_model)
+    log.info("analyzer ready: languages=%s ner=%s gliner=%s hf=%s secrets=%s", settings.languages, settings.ner,
+             settings.gliner_model, settings.hf_ner_model, settings.secrets)
     app = Flask("buff-guardrails-analyzer")
 
     @app.get("/health")
